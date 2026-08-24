@@ -1,5 +1,5 @@
 import { HttpHeaders } from '@angular/common/http';
-import { ChangeDetectionStrategy, Component, OnInit, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Data, ParamMap, Router, RouterLink } from '@angular/router';
 
@@ -20,6 +20,15 @@ import { SortByDirective, SortDirective, SortService, type SortState, sortStateS
 import { RendezVousDeleteDialog } from '../delete/rendez-vous-delete-dialog';
 import { IRendezVous } from '../rendez-vous.model';
 import { RendezVousService } from '../service/rendez-vous.service';
+
+/**
+ * Un groupe de rendez-vous partageant le même jour calendaire, pour
+ * l'affichage groupé de la liste (ex. "Aujourd'hui", "Demain", ...).
+ */
+interface RendezVousGroup {
+  label: string;
+  items: IRendezVous[];
+}
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -44,11 +53,55 @@ export class RendezVous implements OnInit {
   subscription: Subscription | null = null;
   readonly rendezVouses = signal<IRendezVous[]>([]);
 
+  /**
+   * Rendez-vous groupés par jour calendaire, dans l'ordre où ils arrivent
+   * (l'ordre chronologique/tri reste géré par le backend via sortState ;
+   * on regroupe simplement les lignes consécutives du même jour).
+   */
+  readonly groupedRendezVouses = computed<RendezVousGroup[]>(() => this.groupByDay(this.rendezVouses()));
+
   sortState = sortStateSignal({});
 
   readonly itemsPerPage = signal(ITEMS_PER_PAGE);
   readonly totalItems = signal(0);
   readonly page = signal(1);
+
+  // Signals pour les filtres en direct
+  readonly dateFilter = signal<string>('');
+  readonly animalFilter = signal<string>('');
+  readonly medecinFilter = signal<string>('');
+  readonly cliniqueFilter = signal<string>('');
+
+  // Signal dérivé : Filtrage réactif local
+  readonly filteredRendezVouses = computed(() => {
+    const date = this.dateFilter();
+    const animal = this.animalFilter().toLowerCase().trim();
+    const medecin = this.medecinFilter().toLowerCase().trim();
+    const clinique = this.cliniqueFilter().toLowerCase().trim();
+
+    return this.rendezVouses().filter(rdv => {
+      // Extraction date (Dayjs ou String)
+      let rdvDateStr = '';
+      const rawDate: any = (rdv as any).date ?? (rdv as any).dateHeure;
+      if (rawDate) {
+        if (typeof rawDate.format === 'function') {
+          rdvDateStr = rawDate.format('YYYY-MM-DD');
+        } else if (typeof rawDate === 'string') {
+          rdvDateStr = rawDate.slice(0, 10);
+        }
+      }
+
+      const matchesDate = !date || rdvDateStr === date;
+      const matchesAnimal = !animal || ((rdv as any).animal?.nom?.toLowerCase().includes(animal) ?? false);
+      const matchesMedecin =
+        !medecin ||
+        ((rdv as any).medecin?.nom?.toLowerCase().includes(medecin) ?? false) ||
+        ((rdv as any).medecin?.prenom?.toLowerCase().includes(medecin) ?? false);
+      const matchesClinique = !clinique || ((rdv as any).clinique?.nom?.toLowerCase().includes(clinique) ?? false);
+
+      return matchesDate && matchesAnimal && matchesMedecin && matchesClinique;
+    });
+  });
 
   readonly router = inject(Router);
   protected readonly rendezVousService = inject(RendezVousService);
@@ -97,6 +150,29 @@ export class RendezVous implements OnInit {
     this.queryBackend();
   }
 
+  onDateChange(value: string): void {
+    this.dateFilter.set(value);
+  }
+
+  onAnimalChange(value: string): void {
+    this.animalFilter.set(value);
+  }
+
+  onMedecinChange(value: string): void {
+    this.medecinFilter.set(value);
+  }
+
+  onCliniqueChange(value: string): void {
+    this.cliniqueFilter.set(value);
+  }
+
+  resetFilters(): void {
+    this.dateFilter.set('');
+    this.animalFilter.set('');
+    this.medecinFilter.set('');
+    this.cliniqueFilter.set('');
+  }
+
   navigateToWithComponentValues(event: SortState): void {
     this.handleNavigation(this.page(), event);
   }
@@ -140,5 +216,59 @@ export class RendezVous implements OnInit {
       relativeTo: this.activatedRoute,
       queryParams: queryParamsObj,
     });
+  }
+
+  /**
+   * Regroupe une liste plate de rendez-vous en groupes consécutifs partageant
+   * le même jour calendaire (heure locale du navigateur), avec un libellé lisible.
+   */
+  private groupByDay(items: IRendezVous[]): RendezVousGroup[] {
+    const groups: RendezVousGroup[] = [];
+
+    for (const item of items) {
+      const label = this.dayLabel(item.date);
+      const lastGroup = groups.at(-1);
+
+      if (lastGroup && lastGroup.label === label) {
+        lastGroup.items.push(item);
+      } else {
+        groups.push({ label, items: [item] });
+      }
+    }
+
+    return groups;
+  }
+
+  /**
+   * Retourne "Aujourd'hui", "Demain", ou la date complète en français,
+   * pour un rendez-vous donné.
+   */
+  private dayLabel(date: unknown): string {
+    if (!date) {
+      return '';
+    }
+
+    const rdvDate = new Date(date as string);
+    const today = new Date();
+    const tomorrow = new Date();
+    tomorrow.setDate(today.getDate() + 1);
+
+    if (this.isSameDay(rdvDate, today)) {
+      return "Aujourd'hui";
+    }
+    if (this.isSameDay(rdvDate, tomorrow)) {
+      return 'Demain';
+    }
+
+    return rdvDate.toLocaleDateString('fr-FR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+
+  private isSameDay(a: Date, b: Date): boolean {
+    return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
   }
 }

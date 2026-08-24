@@ -4,6 +4,8 @@ import { RouterLink } from '@angular/router';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
 import { TranslatePipe } from '@ngx-translate/core';
 
+import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
+
 import { Alert } from 'app/shared/alert/alert';
 import { AlertError } from 'app/shared/alert/alert-error';
 import { FormatMediumDatePipe } from 'app/shared/date';
@@ -20,6 +22,8 @@ import { PeserAnimalService } from '../../peser-animal/service/peser-animal.serv
 export class AnimalDetail {
   readonly animal = input<IAnimal | null>(null);
 
+  readonly historiquePoids = computed(() => this.peserAnimalService.peserAnimalsResource.value() ?? []);
+
   readonly dernierPoids = computed(() => {
     const list = this.peserAnimalService.peserAnimalsResource.value() ?? [];
     return list.length > 0 ? list[0].poids : null;
@@ -34,7 +38,6 @@ export class AnimalDetail {
         this.peserAnimalService.peserAnimalsParams.set({
           'animalId.equals': currentAnimal.id,
           sort: 'id,desc',
-          size: 1,
         });
       }
     });

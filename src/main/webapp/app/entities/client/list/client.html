@@ -5,8 +5,8 @@
     <!-- Carte de Recherche & Filtres - Module Clients -->
     <form name="searchForm" (ngSubmit)="search(currentSearch)" class="search-bar-container bg-white rounded-4 p-3 shadow-sm border mb-4">
       <div class="row g-3 align-items-end">
-        <!-- Champ Recherche -->
-        <div class="col-12 col-md-8 col-lg-8">
+        <!-- Champ Recherche Automatique -->
+        <div class="col-12 col-md-8 col-lg-9">
           <label class="form-label small fw-semibold text-muted mb-1" jhiTranslate="petclinicApp.client.search.label">
             Rechercher un client
           </label>
@@ -17,8 +17,10 @@
               name="currentSearch"
               [(ngModel)]="currentSearch"
               class="form-control bg-light border-start-0 ps-0 shadow-none"
-              placeholder="Nom, prénom, téléphone, email..."
+              placeholder="Nom, prénom"
               jhiTranslate="petclinicApp.client.search.placeholder"
+              [ngModel]="searchInputSignal()"
+              (ngModelChange)="onSearchChange($event)"
             />
           </div>
         </div>
