@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.stg.petclinic.domain.RendezVous;
+import com.stg.petclinic.repository.MedecinRepository;
 import com.stg.petclinic.repository.RendezVousRepository;
+import com.stg.petclinic.web.rest.errors.RendezVousDatePasseeException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,11 +22,14 @@ class RendezVousServiceTest {
     @Mock
     private RendezVousRepository rendezVousRepository;
 
+    @Mock
+    private MedecinRepository medecinRepository;
+
     private RendezVousService rendezVousService;
 
     @BeforeEach
     void setUp() {
-        rendezVousService = new RendezVousService(rendezVousRepository);
+        rendezVousService = new RendezVousService(rendezVousRepository, medecinRepository);
     }
 
     @Test
