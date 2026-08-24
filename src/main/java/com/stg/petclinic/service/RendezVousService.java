@@ -161,27 +161,16 @@ public class RendezVousService {
     /**
      * Vérifie que le médecin du rendez-vous appartient bien à la clinique du rendez-vous.
      *
-     * Important : on va chercher le médecin EN BASE via son ID, plutôt que de faire
-     * confiance à l'objet "medecin" reçu dans la requête JSON. Le front (ou tout
-     * appelant de l'API) peut légitimement n'envoyer que {"id": X} pour le médecin,
-     * sans sa relation "clinique" imbriquée — dans ce cas rendezVous.getMedecin().getClinique()
-     * est toujours null, et l'ancienne version de cette méthode rejetait alors TOUS les
-     * rendez-vous à tort, même parfaitement cohérents en base.
-     *
      * @param rendezVous le rendez-vous à vérifier.
      */
     private void verifierCoherenceMedecinClinique(RendezVous rendezVous) {
-        if (rendezVous.getMedecin() == null || rendezVous.getMedecin().getId() == null || rendezVous.getClinique() == null) {
-            return;
-        }
+        if (rendezVous.getMedecin() != null && rendezVous.getClinique() != null) {
+            Long cliniqueDuMedecinId = rendezVous.getMedecin().getClinique() != null ? rendezVous.getMedecin().getClinique().getId() : null;
+            Long cliniqueDuRdvId = rendezVous.getClinique().getId();
 
-        Medecin medecin = medecinRepository.findById(rendezVous.getMedecin().getId()).orElseThrow(MedecinCliniqueIncoherenteException::new);
-
-        Long cliniqueDuMedecinId = medecin.getClinique() != null ? medecin.getClinique().getId() : null;
-        Long cliniqueDuRdvId = rendezVous.getClinique().getId();
-
-        if (cliniqueDuMedecinId == null || !cliniqueDuMedecinId.equals(cliniqueDuRdvId)) {
-            throw new MedecinCliniqueIncoherenteException();
+            if (cliniqueDuMedecinId == null || !cliniqueDuMedecinId.equals(cliniqueDuRdvId)) {
+                throw new MedecinCliniqueIncoherenteException();
+            }
         }
     }
 
