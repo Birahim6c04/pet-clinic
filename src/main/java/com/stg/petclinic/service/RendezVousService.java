@@ -1,6 +1,8 @@
 package com.stg.petclinic.service;
 
+import com.stg.petclinic.domain.Medecin;
 import com.stg.petclinic.domain.RendezVous;
+import com.stg.petclinic.repository.MedecinRepository;
 import com.stg.petclinic.repository.RendezVousRepository;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,8 +29,11 @@ public class RendezVousService {
 
     private final RendezVousRepository rendezVousRepository;
 
-    public RendezVousService(RendezVousRepository rendezVousRepository) {
+    private final MedecinRepository medecinRepository;
+
+    public RendezVousService(RendezVousRepository rendezVousRepository, MedecinRepository medecinRepository) {
         this.rendezVousRepository = rendezVousRepository;
+        this.medecinRepository = medecinRepository;
     }
 
     /**
